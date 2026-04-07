@@ -16,6 +16,8 @@ const FALLBACK_MODELS = [
   { id: "gpt-4.1", label: "GPT-4.1", desc: "Free included model" },
 ];
 
+const REASONING_EFFORT_VALUES = ["low", "medium", "high", "xhigh"] as const;
+
 async function fetchModels(): Promise<{ id: string; label: string; desc: string }[]> {
   let client: CopilotClient | undefined;
   try {
@@ -70,6 +72,35 @@ async function askPicker(rl: readline.Interface, label: string, options: { id: s
   const num = parseInt(input.trim(), 10);
   if (num >= 1 && num <= options.length) return options[num - 1].id;
   return options[defaultIdx].id;
+}
+
+async function askReasoningEffort(
+  rl: readline.Interface,
+  current?: string
+): Promise<(typeof REASONING_EFFORT_VALUES)[number] | undefined> {
+  while (true) {
+    const currentHint = current ? ` ${DIM}(current: ${current})${RESET}` : "";
+    const answer = (await ask(
+      rl,
+      `  Reasoning effort${currentHint} ${DIM}(low/medium/high/xhigh, Enter to keep current/default)${RESET}: `
+    )).trim().toLowerCase();
+
+    if (!answer) {
+      return current && REASONING_EFFORT_VALUES.includes(current as (typeof REASONING_EFFORT_VALUES)[number])
+        ? current as (typeof REASONING_EFFORT_VALUES)[number]
+        : undefined;
+    }
+
+    if (REASONING_EFFORT_VALUES.includes(answer as (typeof REASONING_EFFORT_VALUES)[number])) {
+      return answer as (typeof REASONING_EFFORT_VALUES)[number];
+    }
+
+    if (answer === "default" || answer === "none" || answer === "off") {
+      return undefined;
+    }
+
+    console.log(`${YELLOW}  Enter one of: ${REASONING_EFFORT_VALUES.join(", ")} — or press Enter to leave it unset.${RESET}`);
+  }
 }
 
 async function main(): Promise<void> {
@@ -268,6 +299,14 @@ ${BOLD}╔═══════════════════════�
   const modelLabel = models.find((m) => m.id === model)?.label || model;
   console.log(`\n${GREEN}  ✓ Using ${modelLabel}${RESET}\n`);
 
+  console.log(`${DIM}Some models support reasoning effort tuning. Leave it unset to use the model default.${RESET}\n`);
+  const reasoningEffort = await askReasoningEffort(rl, existing.REASONING_EFFORT);
+  if (reasoningEffort) {
+    console.log(`\n${GREEN}  ✓ Reasoning effort: ${reasoningEffort}${RESET}\n`);
+  } else {
+    console.log(`\n${DIM}  Using model default reasoning effort${RESET}\n`);
+  }
+
   // ── Write config ─────────────────────────────────────────
   const apiPort = existing.API_PORT || "7777";
   const lines: string[] = [];
@@ -275,6 +314,7 @@ ${BOLD}╔═══════════════════════�
   if (userId) lines.push(`AUTHORIZED_USER_ID=${userId}`);
   lines.push(`API_PORT=${apiPort}`);
   lines.push(`COPILOT_MODEL=${model}`);
+  if (reasoningEffort) lines.push(`REASONING_EFFORT=${reasoningEffort}`);
 
   writeFileSync(ENV_PATH, lines.join("\n") + "\n");
 

@@ -7,11 +7,14 @@ import { ENV_PATH, ensureMaxHome } from "./paths.js";
 loadEnv({ path: ENV_PATH });
 loadEnv(); // also check cwd for backwards compat
 
+const reasoningEffortSchema = z.enum(["low", "medium", "high", "xhigh"]);
+
 const configSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().min(1).optional(),
   AUTHORIZED_USER_ID: z.string().min(1).optional(),
   API_PORT: z.string().optional(),
   COPILOT_MODEL: z.string().optional(),
+  REASONING_EFFORT: reasoningEffortSchema.optional(),
   WORKER_TIMEOUT: z.string().optional(),
 });
 
@@ -41,6 +44,7 @@ if (!Number.isInteger(parsedWorkerTimeout) || parsedWorkerTimeout <= 0) {
 export const DEFAULT_MODEL = "claude-sonnet-4.6";
 
 let _copilotModel = raw.COPILOT_MODEL || DEFAULT_MODEL;
+let _reasoningEffort = raw.REASONING_EFFORT;
 
 export const config = {
   telegramBotToken: raw.TELEGRAM_BOT_TOKEN,
@@ -52,6 +56,12 @@ export const config = {
   },
   set copilotModel(model: string) {
     _copilotModel = model;
+  },
+  get reasoningEffort(): z.infer<typeof reasoningEffortSchema> | undefined {
+    return _reasoningEffort;
+  },
+  set reasoningEffort(value: z.infer<typeof reasoningEffortSchema> | undefined) {
+    _reasoningEffort = value;
   },
   get telegramEnabled(): boolean {
     return !!this.telegramBotToken && this.authorizedUserId !== undefined;
@@ -86,4 +96,9 @@ function persistEnvVar(key: string, value: string): void {
 /** Persist the current model choice to ~/.max/.env */
 export function persistModel(model: string): void {
   persistEnvVar("COPILOT_MODEL", model);
+}
+
+/** Persist the current reasoning effort choice to ~/.max/.env */
+export function persistReasoningEffort(reasoningEffort: z.infer<typeof reasoningEffortSchema>): void {
+  persistEnvVar("REASONING_EFFORT", reasoningEffort);
 }

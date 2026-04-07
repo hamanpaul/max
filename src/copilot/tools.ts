@@ -87,6 +87,7 @@ export function createTools(deps: ToolDeps): Tool<any>[] {
 
         const session = await deps.client.createSession({
           model: config.copilotModel,
+          reasoningEffort: config.reasoningEffort,
           configDir: SESSIONS_DIR,
           workingDirectory: args.working_dir,
           onPermissionRequest: approveAll,

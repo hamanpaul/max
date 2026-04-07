@@ -179,6 +179,7 @@ async function createOrResumeSession(): Promise<CopilotSession> {
       console.log(`[max] Resuming orchestrator session ${savedSessionId.slice(0, 8)}…`);
       const session = await client.resumeSession(savedSessionId, {
         model: config.copilotModel,
+        reasoningEffort: config.reasoningEffort,
         configDir: SESSIONS_DIR,
         streaming: true,
         systemMessage: {
@@ -203,6 +204,7 @@ async function createOrResumeSession(): Promise<CopilotSession> {
   console.log(`[max] Creating new persistent orchestrator session`);
   const session = await client.createSession({
     model: config.copilotModel,
+    reasoningEffort: config.reasoningEffort,
     configDir: SESSIONS_DIR,
     streaming: true,
     systemMessage: {
