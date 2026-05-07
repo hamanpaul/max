@@ -3,7 +3,7 @@ import type { Request, Response, NextFunction } from "express";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { randomBytes } from "crypto";
 import { sendToOrchestrator, getWorkers, cancelCurrentMessage, getLastRouteResult } from "../copilot/orchestrator.js";
-import { sendPhoto } from "../telegram/bot.js";
+import { sendPhoto, sendProactiveMessage } from "../telegram/bot.js";
 import { config, persistModel } from "../config.js";
 import { getRouterConfig, updateRouterConfig } from "../copilot/router.js";
 import { searchMemories } from "../store/db.js";
@@ -272,6 +272,24 @@ app.post("/send-photo", async (req: Request, res: Response) => {
 
   try {
     await sendPhoto(photo, caption);
+    res.json({ status: "sent" });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+// Send proactive text message to Telegram authorized user
+app.post("/notify", async (req: Request, res: Response) => {
+  const { text } = req.body as { text?: string };
+
+  if (!text || typeof text !== "string") {
+    res.status(400).json({ error: "Missing 'text' in request body" });
+    return;
+  }
+
+  try {
+    await sendProactiveMessage(text);
     res.json({ status: "sent" });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
